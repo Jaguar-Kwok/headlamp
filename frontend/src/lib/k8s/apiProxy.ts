@@ -951,3 +951,41 @@ export function listPortForward(cluster: string) {
     response.json()
   );
 }
+
+export function drainNode(cluster: string, nodeName: string) {
+  return fetch(`${helpers.getAppUrl()}drain-node`, {
+    method: 'POST',
+    headers: new Headers({
+      Authorization: `Bearer ${getToken(cluster)}`,
+      ...JSON_HEADERS,
+    }),
+    body: JSON.stringify({
+      cluster,
+      nodeName,
+    }),
+  }).then(response => {
+    return response.text().then(data => {
+      if (!response.ok) {
+        throw new Error('Something went wrong');
+      }
+      return data;
+    });
+  });
+}
+
+export function drainNodeStatus(cluster: string, nodeName: string) {
+  return fetch(`${helpers.getAppUrl()}drain-node-status?cluster=${cluster}&nodeName=${nodeName}`, {
+    method: 'GET',
+    headers: new Headers({
+      Authorization: `Bearer ${getToken(cluster)}`,
+      ...JSON_HEADERS,
+    }),
+  }).then(response => {
+    return response.text().then(data => {
+      if (!response.ok) {
+        throw new Error('Something went wrong');
+      }
+      return data;
+    });
+  });
+}
