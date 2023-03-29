@@ -69,6 +69,8 @@ type HeadlampConfig struct {
 
 const PodAvailabilityCheckTimer = 5 // seconds
 
+const DrainNodeCacheTTL = 20 // seconds
+
 const (
 	RUNNING = "Running"
 	STOPPED = "Stopped"
@@ -725,6 +727,8 @@ func createHeadlampHandler(config *HeadlampConfig) http.Handler {
 		}
 	})
 
+	r.HandleFunc("/drain-node", config.handleNodeDrain).Methods("POST")
+	r.HandleFunc("/drain-node-status", config.handleNodeDrainStatus).Methods("GET")
 	r.HandleFunc("/portforward", func(w http.ResponseWriter, r *http.Request) {
 		id := r.URL.Query().Get("id")
 		cluster := r.URL.Query().Get("cluster")
@@ -1383,4 +1387,123 @@ func absPath(path string) (string, error) {
 	}
 
 	return filepath.Join(currentUser.HomeDir, path[2:]), nil
+}
+
+//nolint:funlen
+func (c *HeadlampConfig) handleNodeDrain(w http.ResponseWriter, r *http.Request) {
+	var drainPayload struct {
+		Cluster  string `json:"cluster"`
+		NodeName string `json:"nodeName"`
+	}
+	// get nodeName and cluster from request body
+	err := json.NewDecoder(r.Body).Decode(&drainPayload)
+	if err != nil {
+		http.Error(w, "Error decoding payload", http.StatusBadRequest)
+		return
+	}
+
+	if drainPayload.NodeName == "" {
+		http.Error(w, "nodeName is required", http.StatusBadRequest)
+		return
+	}
+
+	if drainPayload.Cluster == "" {
+		http.Error(w, "clusterName is required", http.StatusBadRequest)
+		return
+	}
+	// get token from header
+	token := r.Header.Get("Authorization")
+
+	ctxtProxy := c.contextProxies[drainPayload.Cluster]
+
+	clientset, err := ctxtProxy.context.getClientSetToInteractWithKubernetesAPIServer(token)
+	if err != nil {
+		http.Error(w, "Error getting client", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write([]byte("Drain node request accepted"))
+
+	if err != nil {
+		http.Error(w, "Error writing response", http.StatusInternalServerError)
+		return
+	}
+
+	go func() {
+		nodeClient := clientset.CoreV1().Nodes()
+		ctx := context.Background()
+		cacheKey := uuid.NewSHA1(uuid.Nil, []byte(drainPayload.NodeName+drainPayload.Cluster)).String()
+		cacheItemTTL := DrainNodeCacheTTL * time.Minute
+
+		node, err := nodeClient.Get(context.TODO(), drainPayload.NodeName, v1.GetOptions{})
+		if err != nil {
+			_ = c.cache.SetWithTTL(ctx, cacheKey, "error: "+err.Error(), cacheItemTTL)
+			return
+		}
+
+		// cordon the node first
+		node.Spec.Unschedulable = true
+		_, err = nodeClient.Update(context.TODO(), node, v1.UpdateOptions{})
+
+		if err != nil {
+			_ = c.cache.SetWithTTL(ctx, cacheKey, "error: "+err.Error(), cacheItemTTL)
+			return
+		}
+
+		pods, err := clientset.CoreV1().Pods("").List(context.TODO(),
+			v1.ListOptions{FieldSelector: "spec.nodeName=" + drainPayload.NodeName})
+		if err != nil {
+			_ = c.cache.SetWithTTL(ctx, cacheKey, "error: "+err.Error(), cacheItemTTL)
+			return
+		}
+
+		var gracePeriod int64 = 0
+
+		for _, pod := range pods.Items {
+			// ignore daemonsets
+			if pod.ObjectMeta.Labels["kubernetes.io/created-by"] == "daemonset-controller" {
+				continue
+			}
+
+			_ = clientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(),
+				pod.Name, v1.DeleteOptions{GracePeriodSeconds: &gracePeriod})
+		}
+
+		_ = c.cache.SetWithTTL(ctx, cacheKey, "success", cacheItemTTL)
+	}()
+}
+
+func (c *HeadlampConfig) handleNodeDrainStatus(w http.ResponseWriter, r *http.Request) {
+	var drainPayload struct {
+		Cluster  string `json:"cluster"`
+		NodeName string `json:"nodeName"`
+	}
+
+	drainPayload.Cluster = r.URL.Query().Get("cluster")
+	drainPayload.NodeName = r.URL.Query().Get("nodeName")
+
+	if drainPayload.NodeName == "" {
+		http.Error(w, "nodeName is required", http.StatusBadRequest)
+		return
+	}
+
+	if drainPayload.Cluster == "" {
+		http.Error(w, "clusterName is required", http.StatusBadRequest)
+		return
+	}
+
+	cacheKey := uuid.NewSHA1(uuid.Nil, []byte(drainPayload.NodeName+drainPayload.Cluster)).String()
+	ctx := context.Background()
+
+	cacheItem, err := c.cache.Get(ctx, cacheKey)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	_, err = w.Write([]byte(cacheItem.(string)))
+	if err != nil {
+		http.Error(w, "Error writing response", http.StatusInternalServerError)
+		return
+	}
 }
