@@ -1,22 +1,30 @@
 import { Icon } from '@iconify/react';
 import {
+  Box,
   ButtonBase,
   ButtonBaseProps,
   Card,
   CardContent,
   Grid,
+  IconButton,
+  ListItemText,
   makeStyles,
+  Menu,
+  MenuItem,
   Typography,
   useTheme,
 } from '@material-ui/core';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDispatch } from 'react-redux';
 import { generatePath, useHistory } from 'react-router-dom';
 import helpers from '../../../helpers';
 import { useClustersConf } from '../../../lib/k8s';
+import { deleteCluster } from '../../../lib/k8s/apiProxy';
 import { Cluster } from '../../../lib/k8s/cluster';
 import { createRouteURL } from '../../../lib/router';
 import { getClusterPrefixedPath } from '../../../lib/util';
+import { setConfig } from '../../../redux/actions/actions';
 import { Link, PageGrid, SectionBox, SectionFilterHeader, SimpleTable } from '../../common';
 
 interface ClusterButtonProps extends React.PropsWithChildren<{}> {
@@ -95,6 +103,80 @@ function ClusterButton(props: ClusterButtonProps) {
       ref={focusedRef}
       onClick={onClick}
     />
+  );
+}
+
+function ContextMenu({ cluster }: { cluster: Cluster }) {
+  const { t } = useTranslation(['settings', 'frequent']);
+  const history = useHistory();
+  const dispatch = useDispatch();
+  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+
+  function removeCluster(cluster: Cluster) {
+    deleteCluster(cluster.name || '')
+      .then(config => {
+        dispatch(setConfig(config));
+      })
+      .catch((err: Error) => {
+        if (err.message === 'Not Found') {
+          // TODO: create notification with error message
+        }
+      })
+      .finally(() => {
+        history.push('/');
+      });
+  }
+
+  function handleMenuClose() {
+    setAnchorEl(null);
+  }
+
+  return (
+    <>
+      <IconButton
+        size="small"
+        onClick={event => {
+          setAnchorEl(event.currentTarget);
+        }}
+      >
+        <Icon icon="mdi:more-vert" />
+      </IconButton>
+      <Menu
+        anchorEl={anchorEl}
+        keepMounted
+        open={Boolean(anchorEl)}
+        onClose={() => {
+          handleMenuClose();
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            history.push(createRouteURL('cluster', { cluster: cluster.name }));
+            handleMenuClose();
+          }}
+        >
+          <ListItemText>{t('settings|View')}</ListItemText>
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            history.push(createRouteURL('settingsCluster', { cluster: cluster.name }));
+            handleMenuClose();
+          }}
+        >
+          <ListItemText>{t('settings|Settings')}</ListItemText>
+        </MenuItem>
+        {helpers.isElectron() && cluster.meta_data?.source === 'dynamic_cluster' && (
+          <MenuItem
+            onClick={() => {
+              removeCluster(cluster);
+              handleMenuClose();
+            }}
+          >
+            <ListItemText>{t('frequent|Delete')}</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
+    </>
   );
 }
 
@@ -208,6 +290,20 @@ export default function Home() {
                 <Link routeName="cluster" params={{ cluster: name }}>
                   {name}
                 </Link>
+              ),
+              sort: (c1: Cluster, c2: Cluster) => c1.name.localeCompare(c2.name),
+            },
+            {
+              label: t('frequent|Server'),
+              getter: ({ server }: Cluster) => server,
+              sort: true,
+            },
+            {
+              label: '',
+              getter: (cluster: Cluster) => (
+                <Box textAlign="right">
+                  <ContextMenu cluster={cluster} />
+                </Box>
               ),
             },
           ]}

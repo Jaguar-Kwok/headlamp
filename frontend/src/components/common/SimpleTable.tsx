@@ -43,8 +43,7 @@ const useTableStyle = makeStyles(theme => ({
     },
     '& .MuiTableCell-head': {
       color: theme.palette.tables.headerText,
-      backgroundColor: '#FAF9F8',
-      // fontSize: '1.1rem',
+      backgroundColor: '#faf9f8',
     },
   },
 }));
