@@ -117,7 +117,7 @@ export function useConnectApi(...apiCalls: (() => CancellablePromise)[]) {
   React.useEffect(
     () => {
       const cancellables = apiCalls.map(func => func());
-
+      console.log('>>>>>>>>>>>>USECONN', apiCalls);
       return function cleanup() {
         for (const cancellablePromise of cancellables) {
           cancellablePromise.then(cancellable => cancellable());
@@ -127,7 +127,7 @@ export function useConnectApi(...apiCalls: (() => CancellablePromise)[]) {
     // If we add the apiCalls to the dependency list, then it actually
     // results in undesired reloads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [location]
+    [location, apiCalls]
   );
 }
 

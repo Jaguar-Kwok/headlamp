@@ -22,10 +22,18 @@ import helpers from '../../../helpers';
 import { useClustersConf } from '../../../lib/k8s';
 import { deleteCluster } from '../../../lib/k8s/apiProxy';
 import { Cluster } from '../../../lib/k8s/cluster';
+import Event from '../../../lib/k8s/event';
 import { createRouteURL } from '../../../lib/router';
 import { getClusterPrefixedPath } from '../../../lib/util';
 import { setConfig } from '../../../redux/actions/actions';
-import { Link, PageGrid, SectionBox, SectionFilterHeader, SimpleTable } from '../../common';
+import {
+  Link,
+  PageGrid,
+  SectionBox,
+  SectionFilterHeader,
+  SimpleTable,
+  StatusLabel,
+} from '../../common';
 
 interface ClusterButtonProps extends React.PropsWithChildren<{}> {
   cluster: Cluster;
@@ -267,6 +275,11 @@ function ClusterList(props: ClusterListProps) {
 export default function Home() {
   const { t } = useTranslation(['glossary', 'frequent']);
   const clusters = useClustersConf() || [];
+  const [events, errors] = Event.useListPerCluster({
+    clusters: Object.values(clusters).map(cluster => cluster.name),
+  });
+
+  console.log('>>>>>>>>>>>>>>>>>>>>>>>', clusters, events, errors);
 
   return (
     <PageGrid>
@@ -292,6 +305,24 @@ export default function Home() {
                 </Link>
               ),
               sort: (c1: Cluster, c2: Cluster) => c1.name.localeCompare(c2.name),
+            },
+            {
+              label: t('glossary|Status'),
+              getter: ({ name }: Cluster) => {
+                const clusterEvents = events[name] || [];
+                const clusterError = errors[name];
+                const status = clusterError
+                  ? 'error'
+                  : clusterEvents.length > 0
+                  ? 'warning'
+                  : 'success';
+
+                return (
+                  <Box display="flex" alignItems="center">
+                    <StatusLabel status={status}>{clusterError || 'Success'}</StatusLabel>
+                  </Box>
+                );
+              },
             },
             {
               label: t('frequent|Server'),

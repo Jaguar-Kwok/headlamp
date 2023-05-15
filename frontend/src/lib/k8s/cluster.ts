@@ -3,9 +3,9 @@ import _ from 'lodash';
 import React from 'react';
 import helpers from '../../helpers';
 import { createRouteURL } from '../router';
-import { getCluster, getClusterGroup, timeAgo, useErrorState } from '../util';
+import { getCluster, timeAgo, useErrorState } from '../util';
 import { useConnectApi } from '.';
-import { ApiError, apiFactory, apiFactoryWithNamespace, post, QueryParameters } from './apiProxy';
+import { ApiError, apiFactory, apiFactoryWithNamespace, post,QueryParameters } from './apiProxy';
 import CronJob from './cronJob';
 import DaemonSet from './daemonSet';
 import Deployment from './deployment';
@@ -271,6 +271,8 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
       onError?: (err: ApiError, cluster?: string) => void,
       opts?: ApiListOptions
     ) {
+      // Random ID ref
+      const ref = React.useRef(Math.random().toString(36).substring(7));
       const setObjs = React.useState<{ [key: string]: { [key: string]: U[] } }>({})[1];
       // Keep a copy of the options so we can re-run the API call if the options change more
       // efficiently.
@@ -278,8 +280,14 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
 
       const includeCluster = !!opts?.clusters;
 
-      function onObjs(cluster: string, namespace: string, objList: U[]) {
+      function onObjs(refVal: string, cluster: string, namespace: string, objList: U[]) {
         // Set the objects so we have them for the next API response...
+        console.log('>>>>>>>>>>>>>>>>>>>>>>ON_OBJS', onObjs);
+        if (refVal !== ref.current) {
+          console.log('>>>>>>>>>>> SKIP ERROR');
+          return;
+        }
+
         setObjs(clusters => {
           const newClusters = { ...clusters };
           const previousObjs = newClusters[cluster] || {};
@@ -306,18 +314,25 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
       React.useEffect(() => {
         // Avoid triggering more API calls if the options haven't changed.
         if (!_.isEqual(opts, apiListOpts)) {
+          console.log('>>>>>>>>>>>>>OPTS', opts);
+          ref.current = Math.random().toString(36).substring(7);
           setApiListOpts(opts);
         }
       }, [opts]);
 
-      const onErrForCluster = (err: ApiError, cluster?: string) => {
+      const onErrForCluster = (refVal: string, err: ApiError, cluster?: string) => {
+        console.log('>>>>>>>>>>>>>ERRS', err, cluster);
+        if (refVal !== ref.current) {
+          console.log('>>>>>>>>>>> SKIP ERROR');
+          return;
+        }
         onError && onError(err, cluster);
       };
 
       const listCalls = React.useMemo(() => {
         const apiCalls = [];
         let namespaces: string[] = [];
-        const { namespace, clusters = getClusterGroup(['']), ...queryParams } = apiListOpts || {};
+        const { namespace, clusters = [''], ...queryParams } = apiListOpts || {};
 
         if (!!namespace) {
           if (typeof namespace === 'string') {
@@ -334,6 +349,7 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
           if (namespaces.length === 0 && this.isNamespaced) {
             namespaces = getAllowedNamespaces(cluster);
           }
+          console.log('>>>>>>>>>>>>>>>>>>>>>>>>LLLL', cluster, namespaces);
 
           if (namespaces.length > 0) {
             // If we have a namespace set, then we have to make an API call for each
@@ -341,8 +357,8 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
             for (const namespace of namespaces) {
               apiCalls.push(
                 this.apiList(
-                  objList => onObjs(cluster, namespace, objList as U[]),
-                  (err: ApiError) => onErrForCluster(err, cluster),
+                  objList => onObjs(ref.current, cluster, namespace, objList as U[]),
+                  (err: ApiError) => onErrForCluster(ref.current, err, cluster),
                   {
                     namespace,
                     queryParams,
@@ -356,8 +372,8 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
             // response to set and we return it right away.
             apiCalls.push(
               this.apiList(
-                (objs: U[]) => onObjs(cluster, '', objs),
-                (err: ApiError) => onErrForCluster(err, cluster),
+                (objs: U[]) => onObjs(ref.current, cluster, '', objs),
+                (err: ApiError) => onErrForCluster(ref.current, err, cluster),
                 {
                   queryParams,
                   cluster,
@@ -376,7 +392,8 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
     static useListPerCluster<U extends KubeObject>(
       opts?: ApiListOptions
     ): [{ [clusterName: string]: U[] | null }, { [clusterName: string]: null | ApiError }] {
-      const clusters = opts?.clusters || getClusterGroup(['']);
+      const clusters = opts?.clusters || [''];
+      console.log('?>>>>>>>>>>>>>>>>>>>>>>>PER', clusters);
       const [objList, setObjList] = React.useState<{ [clusterName: string]: U[] | null }>(() => {
         const clusterObjects: { [clusterName: string]: U[] | null } = {};
         for (const cluster of clusters) {
@@ -395,6 +412,7 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
       const createInstance = (item: T) => this.create(item) as U;
 
       function setList(items: T[] | null, cluster: string) {
+        console.log('>>>>>>>>>>>>>>>>>>>SET_LIST', items);
         const objList =
           items?.map((item: T) => {
             const obj = createInstance(item);
@@ -431,6 +449,7 @@ export function makeKubeObject<T extends KubeObjectInterface | KubeEvent>(
       }
 
       const apiOpts = { ...opts, clusters };
+
       this.useApiList(setList, (err, cluster) => setErr(cluster || '', err), apiOpts);
 
       return [objList, error];
