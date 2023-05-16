@@ -20,7 +20,7 @@ import { useDispatch } from 'react-redux';
 import { useHistory } from 'react-router';
 import { FixedSizeList, ListChildComponentProps } from 'react-window';
 import helpers from '../../../helpers';
-import Event, { KubeEvent } from '../../../lib/k8s/event';
+import { KubeEvent } from '../../../lib/k8s/event';
 import { Notification } from '../../../lib/notification';
 import { createRouteURL } from '../../../lib/router';
 import { setUINotifications, updateUINotification } from '../../../redux/actions/actions';
@@ -173,7 +173,7 @@ export default function Notifications() {
   const [anchorEl, setAnchorEl] = useState(null);
   const notifications = useTypedSelector(state => state.ui.notifications);
   const dispatch = useDispatch();
-  const [events] = Event.useList();
+  const events: KubeEvent[] = [];
   const { t } = useTranslation();
   const history = useHistory();
 

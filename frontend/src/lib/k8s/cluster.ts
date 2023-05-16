@@ -84,7 +84,15 @@ export interface KubeManagedFields {
 // We have to define a KubeObject implementation here because the KubeObject
 // class is defined within the function and therefore not inferable.
 export interface KubeObjectIface<T extends KubeObjectInterface | KubeEvent> {
-  apiList: (onList: (arg: InstanceType<KubeObjectIface<T>>[]) => void) => any;
+  apiList: (
+    onList: (arg: InstanceType<KubeObjectIface<T>>[]) => void,
+    onError?: (err: ApiError) => void,
+    opts?: {
+      namespace?: string;
+      queryParams?: QueryParameters;
+      cluster?: string;
+    }
+  ) => any;
   useApiList: (
     onList: (arg: InstanceType<KubeObjectIface<T>>[]) => void,
     onError?: (err: ApiError, cluster?: string) => void,

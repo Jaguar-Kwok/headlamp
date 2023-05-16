@@ -14,6 +14,7 @@ import {
   Typography,
   useTheme,
 } from '@material-ui/core';
+import _ from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDispatch } from 'react-redux';
@@ -272,12 +273,46 @@ function ClusterList(props: ClusterListProps) {
   );
 }
 
+function useEvents(clusters: Cluster[]) {
+  const [events, setEvents] = React.useState<{ [clusterName: string]: Event[] }>({});
+  const [errors, setErrors] = React.useState<{ [clusterName: string]: Error }>({});
+  const [clusterNames, setClusterNames] = React.useState<string[]>([]);
+
+  function onEvents(clusterName: string, events: Event[]) {
+    console.log('>>>>>>>>>>>>>>>>>>>>>>>', clusterName, events);
+    setEvents(prevEvents => ({ ...prevEvents, [clusterName]: events }));
+  }
+
+  function onError(clusterName: string, error: Error) {
+    console.log('>>>>>>>>>>>>>>>>>>>>>>>NEWERR', clusterName, events);
+    setErrors(prevErrors => ({ ...prevErrors, [clusterName]: error }));
+  }
+
+  React.useEffect(() => {
+    const newClusterNames = clusters.map(cluster => cluster.name);
+    if (!_.isEqual(newClusterNames, clusterNames)) {
+      setClusterNames(newClusterNames);
+    }
+  }, [clusters, clusterNames]);
+
+  React.useEffect(() => {
+    for (const clusterName of clusterNames) {
+      const cancel = Event.apiList(
+        (items: Event[]) => onEvents(clusterName, items),
+        err => onError(clusterName, err),
+        { cluster: clusterName }
+      );
+      cancel();
+    }
+  }, [clusterNames]);
+
+  return [events, errors] as const;
+}
+
 export default function Home() {
   const { t } = useTranslation(['glossary', 'frequent']);
-  const clusters = useClustersConf() || [];
-  const [events, errors] = Event.useListPerCluster({
-    clusters: Object.values(clusters).map(cluster => cluster.name),
-  });
+  const clusters = useClustersConf() || {};
+  const [events, errors] = useEvents(Object.values(clusters));
 
   console.log('>>>>>>>>>>>>>>>>>>>>>>>', clusters, events, errors);
 
@@ -319,7 +354,9 @@ export default function Home() {
 
                 return (
                   <Box display="flex" alignItems="center">
-                    <StatusLabel status={status}>{clusterError || 'Success'}</StatusLabel>
+                    <StatusLabel status={status}>
+                      {JSON.stringify(clusterError) || 'Success'}
+                    </StatusLabel>
                   </Box>
                 );
               },
