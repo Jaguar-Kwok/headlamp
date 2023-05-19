@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/headlamp-k8s/headlamp/backend/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -368,6 +369,52 @@ func TestExternalProxy(t *testing.T) {
 		if rr.Body.String() != "OK" {
 			t.Errorf("handler returned unexpected body: got %v want %v",
 				rr.Body.String(), "OK")
+		}
+	}
+}
+
+func TestDrainAndCordonNode(t *testing.T) {
+	type test struct {
+		handler http.Handler
+	}
+
+	tests := []test{
+		{
+			handler: createHeadlampHandler(&HeadlampConfig{
+				useInCluster:   false,
+				kubeConfigPath: config.GetDefaultKubeConfigPath(),
+			}),
+		},
+	}
+
+	var drainNodePayload struct {
+		Cluster  string `json:"cluster"`
+		NodeName string `json:"nodeName"`
+	}
+
+	for _, tc := range tests {
+		ctx := context.Background()
+		drainNodePayload.Cluster = "minikube"
+		drainNodePayload.NodeName = "minikube"
+
+		payload, err := json.Marshal(drainNodePayload)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		body := bytes.NewReader(payload)
+
+		req, err := http.NewRequestWithContext(ctx, "POST", "/drain-node", body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		rr := httptest.NewRecorder()
+		tc.handler.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusOK {
+			t.Errorf("handler returned wrong status code: got %v want %v",
+				status, http.StatusOK)
 		}
 	}
 }
