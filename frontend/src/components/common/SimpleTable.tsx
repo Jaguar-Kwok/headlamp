@@ -6,6 +6,7 @@ import { makeStyles } from '@material-ui/core/styles';
 import TableCell from '@material-ui/core/TableCell';
 import TablePagination from '@material-ui/core/TablePagination';
 import clsx from 'clsx';
+import { debounce } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import helpers from '../../helpers';
@@ -249,13 +250,21 @@ export default function SimpleTable(props: SimpleTableProps) {
       if (currentData === data) {
         return;
       }
-
+      let debouncedStateUpdate: any;
       // If the currentData is not up to date and we are in the first page, then update
       // it directly. Otherwise it will require user's intervention.
       if (!currentData || currentData.length === 0 || page === 0) {
-        setCurrentData(data);
-        setDisplayData(getSortData() || data);
+        debouncedStateUpdate = debounce(function () {
+          setCurrentData(data);
+          setDisplayData(getSortData() || data);
+        }, 200);
+        debouncedStateUpdate();
       }
+      return () => {
+        if (debouncedStateUpdate) {
+          debouncedStateUpdate.cancel();
+        }
+      };
     },
     // eslint-disable-next-line
     [data, currentData]
