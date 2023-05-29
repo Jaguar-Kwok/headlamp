@@ -58,7 +58,7 @@ type HeadlampConfig struct {
 	baseURL               string
 	oidcScopes            []string
 	proxyURLs             []string
-	cache                 cache.Cache
+	cache                 cache.Cache[interface{}]
 	kubeConfigStore       kubeconfig.ContextStore
 }
 
@@ -1065,6 +1065,7 @@ func (c *HeadlampConfig) getClusters() []Cluster {
 	clusters := []Cluster{}
 
 	contexts, err := c.kubeConfigStore.GetContexts()
+	fmt.Println(contexts, err)
 	if err != nil {
 		log.Printf("Error: failed to get contexts: %s", err)
 		return clusters

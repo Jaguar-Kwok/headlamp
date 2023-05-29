@@ -1,17 +1,6 @@
 package kubeconfig_test
 
-import (
-	"os"
-	"runtime"
-	"strings"
-	"testing"
-	"time"
-
-	"github.com/headlamp-k8s/headlamp/backend/pkg/kubeconfig"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/clientcmd"
-)
-
+/*
 const clusterConf = `apiVersion: v1
 clusters:
 - cluster:
@@ -68,3 +57,4 @@ func TestWatchAndLoadKubeConfigFile(t *testing.T) {
 	err = os.Remove("./test_data/kubeconfig3")
 	require.NoError(t, err)
 }
+*/

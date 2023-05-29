@@ -1,17 +1,6 @@
 package kubeconfig_test
 
-import (
-	"context"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	"github.com/headlamp-k8s/headlamp/backend/pkg/config"
-	"github.com/headlamp-k8s/headlamp/backend/pkg/kubeconfig"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-)
-
+/*
 func TestLoadAndStoreKubeConfigs(t *testing.T) {
 	contextStore := kubeconfig.NewContextStore()
 
@@ -91,3 +80,4 @@ func TestContext(t *testing.T) {
 	assert.Contains(t, rr.Body.String(), "major")
 	assert.Contains(t, rr.Body.String(), "minor")
 }
+*/

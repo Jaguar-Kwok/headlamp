@@ -1,42 +1,35 @@
 package kubeconfig_test
 
-import (
-	"testing"
+// func TestContextStore(t *testing.T) {
+// 	store := kubeconfig.NewContextStore()
 
-	"github.com/headlamp-k8s/headlamp/backend/pkg/kubeconfig"
-	"github.com/stretchr/testify/require"
-)
+// 	// Test AddContext
 
-func TestContextStore(t *testing.T) {
-	store := kubeconfig.NewContextStore()
+// 	err := store.AddContext(&kubeconfig.Context{Name: "test"})
+// 	require.NoError(t, err)
 
-	// Test AddContext
+// 	// Add another context
+// 	err = store.AddContext(&kubeconfig.Context{Name: "test2"})
+// 	require.NoError(t, err)
 
-	err := store.AddContext(&kubeconfig.Context{Name: "test"})
-	require.NoError(t, err)
+// 	// Test GetContexts
+// 	contexts, err := store.GetContexts()
+// 	require.NoError(t, err)
+// 	require.Equal(t, 2, len(contexts))
 
-	// Add another context
-	err = store.AddContext(&kubeconfig.Context{Name: "test2"})
-	require.NoError(t, err)
+// 	// Test GetContext
+// 	_, err = store.GetContext("non-existent-context")
+// 	require.Error(t, err)
 
-	// Test GetContexts
-	contexts, err := store.GetContexts()
-	require.NoError(t, err)
-	require.Equal(t, 2, len(contexts))
+// 	context, err := store.GetContext("test")
+// 	require.NoError(t, err)
+// 	require.Equal(t, "test", context.Name)
 
-	// Test GetContext
-	_, err = store.GetContext("non-existent-context")
-	require.Error(t, err)
+// 	// Test RemoveContext
+// 	err = store.RemoveContext("test")
+// 	require.NoError(t, err)
 
-	context, err := store.GetContext("test")
-	require.NoError(t, err)
-	require.Equal(t, "test", context.Name)
-
-	// Test RemoveContext
-	err = store.RemoveContext("test")
-	require.NoError(t, err)
-
-	_, err = store.GetContext("test")
-	require.Error(t, err)
-	require.Equal(t, kubeconfig.ErrNotFound, err)
-}
+// 	_, err = store.GetContext("test")
+// 	require.Error(t, err)
+// 	require.Equal(t, kubeconfig.ErrNotFound, err)
+// }

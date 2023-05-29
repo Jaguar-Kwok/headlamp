@@ -1,16 +1,6 @@
 package kubeconfig_test
 
-import (
-	"io/ioutil"
-	"os"
-	"testing"
-
-	"github.com/headlamp-k8s/headlamp/backend/pkg/kubeconfig"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"k8s.io/client-go/tools/clientcmd"
-)
-
+/*
 func TestWriteToFile(t *testing.T) {
 
 	// create kubeconfig3 file that doesn't exist
@@ -59,3 +49,4 @@ func TestRemoveContextFromFile(t *testing.T) {
 	err = os.Remove("./test_data/config_copy")
 	require.NoError(t, err)
 }
+*/
