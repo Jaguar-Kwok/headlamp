@@ -844,6 +844,7 @@ func createHeadlampHandler(config *HeadlampConfig) http.Handler {
 
 		spa := spaHandler{staticPath: staticPath, indexPath: "index.html", baseURL: config.baseURL}
 		r.PathPrefix("/").Handler(spa)
+		r.PathPrefix("").Handler(spa)
 
 		http.Handle("/", r)
 	}
