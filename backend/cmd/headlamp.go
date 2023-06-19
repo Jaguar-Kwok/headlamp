@@ -27,6 +27,7 @@ import (
 
 	oidc "github.com/coreos/go-oidc"
 	"github.com/gobwas/glob"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -904,7 +905,8 @@ func (c *HeadlampConfig) startPortForward(p PortForwardPayload, token string) er
 		Host:        ctxtProxy.context.cluster.config.Server,
 		BearerToken: token,
 		TLSClientConfig: rest.TLSClientConfig{
-			CAData: caData,
+			CAData:   caData,
+			Insecure: true,
 		},
 	}
 
@@ -1147,6 +1149,40 @@ func handleClusterAPI(c *HeadlampConfig, router *mux.Router) {
 			return
 		}
 
+		//Decode token, if issuer is from dex and it is not websocket, forward to kube-oidc-proxy
+		tokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
+		if err == nil {
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if !ok {
+				fmt.Println(err)
+			}
+			if claims["aud"] == "headlamp-client" {
+				ctxtProxy, ok := c.contextProxies["test123"]
+				if !ok {
+					http.NotFound(w, r)
+				}
+				//fmt.Println("forward to OIDC")
+				handler := proxyHandler(server, ctxtProxy.proxy)
+				handler(w, r)
+				return
+			}
+		}
+
+		//If it is websocket, change the header to service token and sent directly to kubernetes api server
+		if r.Header.Get("Sec-Fetch-Mode") != "cors" {
+			log.Printf("Handling Websocket")
+			tokenPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
+			token, err := os.ReadFile(tokenPath)
+			if err != nil {
+				log.Printf("Error Obtaining Token")
+			}
+			encodedtoken := "base64url.bearer.authorization.k8s.io." + base64.StdEncoding.WithPadding(base64.NoPadding).EncodeToString(token)
+			token64index := strings.Index(r.Header.Get("Sec-WebSocket-Protocol"), "base64url.bearer.authorization.k8s.io.")
+			r.Header.Set("Sec-WebSocket-Protocol", r.Header.Get("Sec-WebSocket-Protocol")[:token64index]+string(encodedtoken))
+		}
+
+		log.Printf("forward to Kubernetes API")
 		handler := proxyHandler(server, ctxtProxy.proxy)
 		handler(w, r)
 	})
@@ -1193,6 +1229,7 @@ func (c *HeadlampConfig) createProxyForContext(context Context) (*httputil.Rever
 
 	restConfig, err := context.restConfig()
 	if err == nil {
+		restConfig.TLSClientConfig = rest.TLSClientConfig{Insecure: true}
 		roundTripper, err := rest.TransportFor(restConfig)
 		if err == nil {
 			proxy.Transport = roundTripper
