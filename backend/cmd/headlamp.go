@@ -1149,10 +1149,9 @@ func handleClusterAPI(c *HeadlampConfig, router *mux.Router) {
 			return
 		}
 
+		//Decode token, if issuer is from dex and it is not websocket, forward to kube-oidc-proxy
 		tokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		//log.Printf("TokenString %s", tokenString)
 		token, _, err := new(jwt.Parser).ParseUnverified(tokenString, jwt.MapClaims{})
-		//log.Printf("Token %s", token)
 		if err == nil {
 			claims, ok := token.Claims.(jwt.MapClaims)
 			if !ok {
@@ -1170,22 +1169,17 @@ func handleClusterAPI(c *HeadlampConfig, router *mux.Router) {
 			}
 		}
 
-		//log.Printf("JSON: %s", string(tmp1))
-		//log.Printf("Original Server: %s", *ctxtProxy.context.cluster.getServer())
-		// Check if the incoming request is a WebSocket request
-
+		//If it is websocket, change the header to service token and sent directly to kubernetes api server
 		if r.Header.Get("Sec-Fetch-Mode") != "cors" {
 			log.Printf("Handling Websocket")
 			tokenPath := "/var/run/secrets/kubernetes.io/serviceaccount/token"
 			token, err := os.ReadFile(tokenPath)
-			//log.Printf("Original: %s", r.Header.Get("Sec-WebSocket-Protocol"))
 			if err != nil {
 				log.Printf("Error Obtaining Token")
 			}
 			encodedtoken := "base64url.bearer.authorization.k8s.io." + base64.StdEncoding.EncodeToString(token)
 			token64index := strings.Index(r.Header.Get("Sec-WebSocket-Protocol"), "base64url.bearer.authorization.k8s.io.")
-			r.Header.Set("Sec-WebSocket-Protocol", r.Header.Get("Sec-WebSocket-Protocol")[:token64index]+string(encodedtoken))
-			//log.Printf("testfirstitem: %s", r.Header.Get("Sec-WebSocket-Protocol"))
+			r.Header.Set("Sec-WebSocket-Protocol", r.Header.Get("Sec-WebSocket-Protocol")[:token64index]+string(encodedtoken[:len(encodedtoken)-2]))
 		}
 
 		log.Printf("forward to Kubernetes API")
