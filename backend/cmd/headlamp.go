@@ -58,6 +58,7 @@ type HeadlampConfig struct {
 	oidcClientSecret      string
 	oidcIdpIssuerURL      string
 	baseURL               string
+	apiserverURL          string
 	oidcScopes            []string
 	proxyURLs             []string
 	cache                 cache.Cache[interface{}]
@@ -377,7 +378,7 @@ func createHeadlampHandler(config *HeadlampConfig) http.Handler {
 	if config.useInCluster {
 		context, err := kubeconfig.GetInClusterContext(config.oidcIdpIssuerURL,
 			config.oidcClientID, config.oidcClientSecret,
-			strings.Join(config.oidcScopes, ","))
+			strings.Join(config.oidcScopes, ","), config.apiserverURL)
 		if err != nil {
 			log.Println("Failed to get in-cluster config", err)
 		}

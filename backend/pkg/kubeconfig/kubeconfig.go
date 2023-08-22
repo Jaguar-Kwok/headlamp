@@ -281,11 +281,15 @@ func splitKubeConfigPath(path string) []string {
 // GetInClusterContext returns the in-cluster context.
 func GetInClusterContext(oidcIssuerURL string,
 	oidcClientID string, oidcClientSecret string,
-	oidcScopes string,
+	oidcScopes string, apiserverURL string,
 ) (*Context, error) {
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return nil, err
+	}
+
+	if apiserverURL != "" {
+		clusterConfig.Host = apiserverURL
 	}
 
 	cluster := &api.Cluster{

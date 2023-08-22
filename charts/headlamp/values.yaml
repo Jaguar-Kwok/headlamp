@@ -28,6 +28,8 @@ initContainers: []
 config:
   # -- base url path at which headlamp should run
   baseURL: ""
+  # -- Kubernetes API server URL path. If not provided, it will use in-cluster default url.
+  apiserverURL: ""
   oidc:
     # -- OIDC client ID
     clientID: ""

@@ -30,6 +30,7 @@ type Config struct {
 	StaticDir             string `koanf:"html-static-dir"`
 	PluginsDir            string `koanf:"plugins-dir"`
 	BaseURL               string `koanf:"base-url"`
+	ApiserverURL          string `koanf:"apiserver-url"`
 	ProxyURLs             string `koanf:"proxy-urls"`
 	OidcClientID          string `koanf:"oidc-client-id"`
 	OidcClientSecret      string `koanf:"oidc-client-secret"`
@@ -145,6 +146,7 @@ func flagset() *flag.FlagSet {
 	f.String("html-static-dir", "", "Static HTML directory to serve")
 	f.String("plugins-dir", defaultPluginDir(), "Specify the plugins directory to build the backend with")
 	f.String("base-url", "", "Base URL path. eg. /headlamp")
+	f.String("apiserver-url", "", "Kubernetes API server URL path. If not provided, it will use in-cluster default url.")
 	f.Uint("port", defaultPort, "Port to listen from")
 	f.String("proxy-urls", "", "Allow proxy requests to specified URLs")
 

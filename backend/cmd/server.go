@@ -32,6 +32,7 @@ func main() {
 		oidcIdpIssuerURL:      conf.OidcIdpIssuerURL,
 		oidcScopes:            strings.Split(conf.OidcScopes, ","),
 		baseURL:               conf.BaseURL,
+		apiserverURL:          conf.ApiserverURL,
 		proxyURLs:             strings.Split(conf.ProxyURLs, ","),
 		enableHelm:            conf.EnableHelm,
 		enableDynamicClusters: conf.EnableDynamicClusters,
